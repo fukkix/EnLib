@@ -1,0 +1,41 @@
+# Godot 4+ specific ignores
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Imported translations (built from CSV)
+*.translation
+
+# Mono / .NET specific
+.mono/
+data_*/
+mono_crash.*.json
+
+# C# build artifacts
+bin/
+obj/
+*.user
+*.userosscache
+*.suo
+*.csproj.user
+*.sln.docstates
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build output
+build/
+dist/
+
+# Local secrets / scratch
+*.local
+scratch/
