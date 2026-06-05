@@ -94,4 +94,17 @@ public partial class CardView : PanelContainer
         SetDragPreview(preview);
         return Card.Id;
     }
+
+    /// <summary>右键卡片：请求弹出（由父级 VerbSlot 监听）。</summary>
+    [Signal]
+    public delegate void EjectRequestedEventHandler();
+
+    public override void _GuiInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true })
+        {
+            EmitSignal(SignalName.EjectRequested);
+            AcceptEvent();
+        }
+    }
 }

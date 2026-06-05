@@ -49,6 +49,8 @@ public sealed class Recipe
     public AspectRequirement[] Requires { get; init; } = Array.Empty<AspectRequirement>();
     /// <summary>aspect 阈值不够表达时的额外谓词，如"必含未辨识典籍"。</summary>
     public Func<IReadOnlyList<Card>, bool>? ExtraMatch { get; init; }
+    /// <summary>ExtraMatch 的人类可读名（用于"缺什么"提示）。</summary>
+    public string? ExtraMatchName { get; init; }
     public float DurationSec { get; init; } = 5f;
     public Outcome[] Outcomes { get; init; } = Array.Empty<Outcome>();
 

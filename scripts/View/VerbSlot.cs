@@ -55,10 +55,20 @@ public partial class VerbSlot : PanelContainer
         vbox.AddThemeConstantOverride("separation", 6);
         v.AddChild(vbox);
 
+        // 标题行：【动词】  右侧 [清空]
+        var titleRow = new HBoxContainer();
         v._title = new Label { Text = $"【{LabelOf(verb)}】" };
         v._title.AddThemeColorOverride("font_color", new Color(0.92f, 0.88f, 0.75f));
         v._title.AddThemeFontSizeOverride("font_size", 16);
-        vbox.AddChild(v._title);
+        v._title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        titleRow.AddChild(v._title);
+
+        var clearBtn = new Button { Text = "清空", TooltipText = "把槽内所有卡归位 Inbox" };
+        clearBtn.AddThemeFontSizeOverride("font_size", 10);
+        clearBtn.CustomMinimumSize = new Vector2(0, 22);
+        clearBtn.Pressed += v.ClearAll;
+        titleRow.AddChild(clearBtn);
+        vbox.AddChild(titleRow);
 
         v._status = new Label { Text = "（拖卡入此）" };
         v._status.AddThemeColorOverride("font_color", new Color(0.55f, 0.55f, 0.55f));
@@ -111,10 +121,32 @@ public partial class VerbSlot : PanelContainer
         GameState.I.SetLocation(card, Location.InSlot);
 
         var view = CardView.Make(card);
+        view.EjectRequested += () => EjectCard(view);
         _cardViews.Add(view);
         _cardsBox.AddChild(view);
 
         TryStartRecipe();
+        RefreshStatus();
+    }
+
+    private void EjectCard(CardView view)
+    {
+        if (_running) return;  // 跑起来的不能弹
+        _cardViews.Remove(view);
+        GameState.I.SetLocation(view.Card, Location.Inbox);
+        view.QueueFree();
+        RefreshStatus();
+    }
+
+    private void ClearAll()
+    {
+        if (_running) return;
+        foreach (var view in _cardViews)
+        {
+            GameState.I.SetLocation(view.Card, Location.Inbox);
+            view.QueueFree();
+        }
+        _cardViews.Clear();
         RefreshStatus();
     }
 
@@ -134,9 +166,33 @@ public partial class VerbSlot : PanelContainer
 
     private void RefreshStatus()
     {
-        if (_running) _status.Text = $"运行中：{_activeRecipe?.Id}";
-        else if (_cardViews.Count == 0) _status.Text = "（拖卡入此）";
-        else _status.Text = $"等待配方匹配（{_cardViews.Count} 张）";
+        if (_running) { _status.Text = $"运行中：{_activeRecipe?.Id}"; return; }
+        if (_cardViews.Count == 0) { _status.Text = "（拖卡入此 · 右键卡片可移除）"; return; }
+        _status.Text = ComputeNoMatchHint();
+    }
+
+    private string ComputeNoMatchHint()
+    {
+        var cards = _cardViews.Select(v => v.Card).ToList();
+        var recipes = GameState.I.Recipes.Where(r => r.Verb == Verb).ToList();
+        if (recipes.Count == 0) return $"{cards.Count} 张 · 此台无配方";
+
+        var sum = AspectSet.Sum(cards.Select(c => c.Aspects));
+        (Recipe r, List<string> missing)? best = null;
+
+        foreach (var r in recipes)
+        {
+            var miss = new List<string>();
+            foreach (var req in r.Requires)
+                if (sum[req.Aspect] < req.Min)
+                    miss.Add($"{req.Aspect.ToString().ToLower()}≥{req.Min}(现{sum[req.Aspect]})");
+            if (r.ExtraMatch != null && !r.ExtraMatch(cards))
+                miss.Add(r.ExtraMatchName ?? "特定条件");
+            if (best == null || miss.Count < best.Value.missing.Count) best = (r, miss);
+        }
+
+        if (best!.Value.missing.Count == 0) return "等待中…";
+        return $"{cards.Count} 张 · 缺 " + string.Join("、", best.Value.missing);
     }
 
     public override void _Process(double delta)

@@ -63,10 +63,17 @@ public static class RecipeLoader
             Verb = ParseVerb(spec.Verb),
             Requires = requires,
             ExtraMatch = spec.ExtraMatch != null ? Predicates[spec.ExtraMatch] : null,
+            ExtraMatchName = spec.ExtraMatch != null ? PredicateHints.GetValueOrDefault(spec.ExtraMatch, spec.ExtraMatch) : null,
             DurationSec = spec.Duration,
             Outcomes = spec.Outcomes.Select(BuildOutcome).ToArray(),
         };
     }
+
+    private static readonly Dictionary<string, string> PredicateHints = new()
+    {
+        ["has_unidentified_book"] = "含未辨识典籍",
+        ["has_same_series_2plus"] = "含 2+ 张同系列典籍",
+    };
 
     private static Outcome BuildOutcome(OutcomeSpec spec) => new()
     {
