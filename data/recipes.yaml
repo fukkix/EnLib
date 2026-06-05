@@ -1,0 +1,66 @@
+# ────────────────────────────────────────────────────────────
+# 配方定义
+# 字段：
+#   id (必填) · verb (identify/restore/sort/study/reception)
+#   requires:    { aspect: 最小值, ... }     # AspectSet 阈值
+#   extra_match: 谓词名                       # 详见 RecipeLoader.Predicates
+#   duration:    秒数
+#   outcomes:    [ {id, weight, text, do: [actions]} ]
+#
+# action 类型：
+#   condition_change   { target: first_book, amount: 1 }
+#   identify_books     # 把输入中所有未辨识 Book 标为已辨识
+#   spawn_card         { type, name | name_template, description, aspects }
+#   try_shelf_or_spawn_lead   # 整理专用：全卷集齐→上架 / 缺册→生成寻书契机
+#
+# extra_match 谓词：
+#   has_unidentified_book
+#   has_same_series_2plus
+# ────────────────────────────────────────────────────────────
+
+- id: identify_basic
+  verb: identify
+  requires: { lore: 1 }
+  extra_match: has_unidentified_book
+  duration: 6
+  outcomes:
+    - id: identified
+      weight: 100
+      text: identify.success
+      do:
+        - { action: identify_books }
+
+- id: sort_basic
+  verb: sort
+  extra_match: has_same_series_2plus
+  duration: 3
+  outcomes:
+    - id: sorted
+      weight: 100
+      text: sort.result
+      do:
+        - { action: try_shelf_or_spawn_lead }
+
+- id: restore_basic
+  verb: restore
+  requires: { decay: 1, craft: 2 }
+  duration: 5
+  outcomes:
+    - id: success
+      weight: 70
+      text: restore.success
+      do:
+        - { action: condition_change, target: first_book, amount: 1 }
+    - id: jackpot
+      weight: 10
+      text: restore.jackpot
+      do:
+        - { action: condition_change, target: first_book, amount: 2 }
+    - id: flaw
+      weight: 20
+      text: restore.flaw
+      do:
+        - action: spawn_card
+          type: state
+          name_template: "瑕疵·{book.name}"
+          description: "夹缝里始终留着一道淡灰的痕。也许只有你会注意到。"
