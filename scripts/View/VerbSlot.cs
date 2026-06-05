@@ -129,6 +129,7 @@ public partial class VerbSlot : PanelContainer
         _running = true;
         _progress.Visible = true;
         _progress.Value = 0;
+        GameState.I.ActiveSlotCount++;
     }
 
     private void RefreshStatus()
@@ -141,6 +142,7 @@ public partial class VerbSlot : PanelContainer
     public override void _Process(double delta)
     {
         if (!_running || _activeRecipe == null) return;
+        if (GameState.I.Paused) return;
         _elapsed += (float)delta;
         var ratio = Math.Clamp(_elapsed / _activeRecipe.DurationSec, 0f, 1f);
         _progress.Value = ratio;
@@ -189,6 +191,7 @@ public partial class VerbSlot : PanelContainer
         _activeRecipe = null;
         _running = false;
         _progress.Visible = false;
+        GameState.I.ActiveSlotCount = Math.Max(0, GameState.I.ActiveSlotCount - 1);
         RefreshStatus();
 
         EmitSignal(SignalName.RecipeFinished, outcome.Id);

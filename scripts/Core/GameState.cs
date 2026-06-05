@@ -23,9 +23,33 @@ public partial class GameState : Node
     public IReadOnlyCollection<Card> AllCards => _cards.Values;
     public IReadOnlyList<Recipe> Recipes => _recipes;
 
+    // ──── 时钟 / 状态 ────
+    public bool Paused { get; private set; }
+    public double PlayTicks { get; private set; }          // 实时经过的秒
+    public int NightNumber { get; private set; } = 1;
+    public float BloodThirst { get; private set; }         // 0~100
+    /// <summary>当前正在运行的工作台数；用于 BloodThirst 累积。</summary>
+    public int ActiveSlotCount { get; set; }
+
+    private const double SecondsPerNight = 300;            // 5 分钟 = 1 夜
+    private const float ThirstPerSecondPerSlot = 0.5f;     // 1 个台子 1 秒 +0.5
+
     /// <summary>任意"卡集合"发生变化时触发：增删卡、location 改变。</summary>
     [Signal]
     public delegate void CardsChangedEventHandler();
+
+    /// <summary>每 tick 触发；视图层用来刷新顶栏。</summary>
+    [Signal]
+    public delegate void ClockTickedEventHandler();
+
+    public void SetPaused(bool paused)
+    {
+        if (Paused == paused) return;
+        Paused = paused;
+        EmitSignal(SignalName.ClockTicked);
+    }
+
+    public void TogglePaused() => SetPaused(!Paused);
 
     public override void _EnterTree()
     {
@@ -36,6 +60,22 @@ public partial class GameState : Node
     {
         SeedDemoData();
         GD.Print($"[GameState] Ready. {_cards.Count} cards, {_recipes.Count} recipes.");
+        SetProcess(true);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (Paused) return;
+        PlayTicks += delta;
+
+        var prevNight = NightNumber;
+        NightNumber = 1 + (int)(PlayTicks / SecondsPerNight);
+
+        if (ActiveSlotCount > 0)
+            BloodThirst = Math.Min(100, BloodThirst + (float)delta * ThirstPerSecondPerSlot * ActiveSlotCount);
+
+        if (NightNumber != prevNight || ActiveSlotCount > 0 || (int)PlayTicks % 1 == 0)
+            EmitSignal(SignalName.ClockTicked);
     }
 
     private bool _suppressSignals;

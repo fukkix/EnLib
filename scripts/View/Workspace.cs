@@ -4,7 +4,7 @@ using Godot;
 namespace EnLib.View;
 
 /// <summary>
-/// L1 工作桌面：左 Inbox + 中央工作台 + 底 Shelf。
+/// L1 工作桌面：顶 TopBar + 中部 [Inbox | Verbs] + 底 Shelf。
 /// </summary>
 public partial class Workspace : Control
 {
@@ -15,21 +15,35 @@ public partial class Workspace : Control
         var outer = new VBoxContainer
         {
             AnchorRight = 1, AnchorBottom = 1,
-            OffsetLeft = 24, OffsetTop = 24,
-            OffsetRight = -24, OffsetBottom = -24,
         };
-        outer.AddThemeConstantOverride("separation", 16);
+        outer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        outer.AddThemeConstantOverride("separation", 0);
         AddChild(outer);
 
-        // 上部：Inbox | Verbs
+        outer.AddChild(new TopBar());
+
+        // 中间内容（左右留白）
+        var midWrap = new MarginContainer();
+        midWrap.AddThemeConstantOverride("margin_left", 24);
+        midWrap.AddThemeConstantOverride("margin_right", 24);
+        midWrap.AddThemeConstantOverride("margin_top", 16);
+        midWrap.AddThemeConstantOverride("margin_bottom", 8);
+        midWrap.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        midWrap.SizeFlagsVertical = SizeFlags.ExpandFill;
+        outer.AddChild(midWrap);
+
+        var midInner = new VBoxContainer();
+        midInner.AddThemeConstantOverride("separation", 16);
+        midWrap.AddChild(midInner);
+
+        // [Inbox | Verbs]
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 16);
         top.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         top.SizeFlagsVertical = SizeFlags.ExpandFill;
-        outer.AddChild(top);
+        midInner.AddChild(top);
 
-        var inbox = new InboxPanel();
-        top.AddChild(inbox);
+        top.AddChild(new InboxPanel());
 
         var verbs = new HFlowContainer();
         verbs.AddThemeConstantOverride("h_separation", 12);
@@ -43,8 +57,17 @@ public partial class Workspace : Control
         verbs.AddChild(VerbSlot.Make(Verb.Restore));
         verbs.AddChild(VerbSlot.Make(Verb.Sort));
 
-        // 底部：Shelf
-        var shelf = new ShelfPanel();
-        outer.AddChild(shelf);
+        midInner.AddChild(new ShelfPanel());
+
+        SetProcessUnhandledInput(true);
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event.IsActionPressed("toggle_pause"))
+        {
+            GameState.I.TogglePaused();
+            GetViewport().SetInputAsHandled();
+        }
     }
 }
