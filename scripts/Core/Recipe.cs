@@ -47,15 +47,18 @@ public sealed class Recipe
     public string Id { get; init; } = "";
     public Verb Verb { get; init; }
     public AspectRequirement[] Requires { get; init; } = Array.Empty<AspectRequirement>();
+    /// <summary>aspect 阈值不够表达时的额外谓词，如"必含未辨识典籍"。</summary>
+    public Func<IReadOnlyList<Card>, bool>? ExtraMatch { get; init; }
     public float DurationSec { get; init; } = 5f;
     public Outcome[] Outcomes { get; init; } = Array.Empty<Outcome>();
 
-    /// <summary>给定一组输入卡，判断是否满足该配方的 aspect 要求。</summary>
-    public bool Matches(IEnumerable<Card> cards)
+    /// <summary>给定一组输入卡，判断是否满足该配方的全部要求。</summary>
+    public bool Matches(IReadOnlyList<Card> cards)
     {
         var sum = AspectSet.Sum(cards.Select(c => c.Aspects));
         foreach (var req in Requires)
             if (!sum.Meets(req.Aspect, req.Min)) return false;
+        if (ExtraMatch != null && !ExtraMatch(cards)) return false;
         return true;
     }
 

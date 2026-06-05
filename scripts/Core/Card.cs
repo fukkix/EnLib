@@ -42,6 +42,7 @@ public sealed class Card
     public bool Identified { get; set; } = true;
     public string? SeriesId { get; set; }
     public int? VolumeNo { get; set; }
+    public int? SeriesTotal { get; set; }
 
     // —— Tool / Material 专属字段 ——
     public int? Charges { get; set; }   // null = 耐用（无限）
@@ -56,4 +57,9 @@ public sealed class Card
     /// <summary>新建一个全新的、带新 ID 的卡。</summary>
     public static Card New(CardType type, string displayName)
         => new(Guid.NewGuid().ToString("N")[..10], type, displayName);
+
+    /// <summary>UI 显示用的标题；未辨识典籍隐藏真实标题。</summary>
+    public string DisplayTitle => (Type == CardType.Book && !Identified)
+        ? "残卷·待辨识"
+        : DisplayName;
 }

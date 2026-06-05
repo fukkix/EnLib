@@ -14,8 +14,10 @@ public partial class InboxPanel : PanelContainer
     private HBoxContainer _filterRow = null!;
     private VBoxContainer _list = null!;
     private Label _countLabel = null!;
+    private LineEdit _search = null!;
 
     private CardType? _filter = null;  // null = 全部
+    private string _searchText = "";
     private Button? _allChip;
     private readonly Dictionary<CardType, Button> _typeChips = new();
 
@@ -50,9 +52,23 @@ public partial class InboxPanel : PanelContainer
         header.AddChild(_countLabel);
         vbox.AddChild(header);
 
-        // 筛选 chips
+        // 搜索框
+        _search = new LineEdit
+        {
+            PlaceholderText = "搜索标题…",
+            ClearButtonEnabled = true,
+        };
+        _search.AddThemeFontSizeOverride("font_size", 12);
+        _search.TextChanged += text =>
+        {
+            _searchText = text ?? "";
+            Rebuild();
+        };
+        vbox.AddChild(_search);
+
+        // 筛选 chips（单字 + tooltip）
         _filterRow = new HBoxContainer();
-        _filterRow.AddThemeConstantOverride("separation", 4);
+        _filterRow.AddThemeConstantOverride("separation", 2);
         vbox.AddChild(_filterRow);
         BuildChips();
 
@@ -79,16 +95,21 @@ public partial class InboxPanel : PanelContainer
 
     private void BuildChips()
     {
-        AddChip(null, "全部");
+        AddChip(null, "★", "全部");
         foreach (CardType t in System.Enum.GetValues(typeof(CardType)))
-            AddChip(t, ChipLabel(t));
+            AddChip(t, ChipIcon(t), ChipLabel(t));
     }
 
-    private void AddChip(CardType? type, string label)
+    private void AddChip(CardType? type, string icon, string fullLabel)
     {
-        var btn = new Button { Text = label, ToggleMode = true };
-        btn.AddThemeFontSizeOverride("font_size", 11);
-        btn.CustomMinimumSize = new Vector2(0, 24);
+        var btn = new Button
+        {
+            Text = icon,
+            ToggleMode = true,
+            TooltipText = fullLabel,
+        };
+        btn.AddThemeFontSizeOverride("font_size", 13);
+        btn.CustomMinimumSize = new Vector2(28, 28);
         btn.Pressed += () =>
         {
             _filter = type;
@@ -100,6 +121,18 @@ public partial class InboxPanel : PanelContainer
         else _allChip = btn;
         if (type == _filter) btn.ButtonPressed = true;
     }
+
+    private static string ChipIcon(CardType t) => t switch
+    {
+        CardType.Book      => "典",
+        CardType.Knowledge => "识",
+        CardType.Tool      => "工",
+        CardType.Material  => "材",
+        CardType.State     => "态",
+        CardType.Visitor   => "客",
+        CardType.Lead      => "契",
+        _ => "?",
+    };
 
     private void UpdateChipStates()
     {
@@ -124,12 +157,16 @@ public partial class InboxPanel : PanelContainer
         foreach (var child in _list.GetChildren()) child.QueueFree();
 
         var inbox = GameState.I.CardsAt(Location.Inbox).ToList();
-        var filtered = (_filter == null ? inbox : inbox.Where(c => c.Type == _filter.Value))
-            .OrderBy(c => c.Type)
-            .ThenBy(c => c.DisplayName)
-            .ToList();
+        var filtered = inbox.AsEnumerable();
+        if (_filter != null) filtered = filtered.Where(c => c.Type == _filter.Value);
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var q = _searchText.Trim();
+            filtered = filtered.Where(c => c.DisplayName.Contains(q, System.StringComparison.OrdinalIgnoreCase));
+        }
+        var list = filtered.OrderBy(c => c.Type).ThenBy(c => c.DisplayName).ToList();
 
-        foreach (var c in filtered) _list.AddChild(CardRow.Make(c));
-        _countLabel.Text = $"{filtered.Count} / {inbox.Count}";
+        foreach (var c in list) _list.AddChild(CardRow.Make(c));
+        _countLabel.Text = $"{list.Count} / {inbox.Count}";
     }
 }

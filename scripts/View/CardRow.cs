@@ -44,7 +44,7 @@ public partial class CardRow : PanelContainer
         row.AddThemeConstantOverride("separation", 8);
         r.AddChild(row);
 
-        var title = new Label { Text = card.DisplayName };
+        var title = new Label { Text = card.DisplayTitle };
         title.AddThemeColorOverride("font_color", new Color(0.92f, 0.88f, 0.78f));
         title.AddThemeFontSizeOverride("font_size", 13);
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill;

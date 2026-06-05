@@ -55,7 +55,7 @@ public partial class CardView : PanelContainer
         var vbox = new VBoxContainer();
         v.AddChild(vbox);
 
-        v._title = new Label { Text = card.DisplayName };
+        v._title = new Label { Text = card.DisplayTitle };
         v._title.AddThemeColorOverride("font_color", new Color(0.95f, 0.92f, 0.85f));
         vbox.AddChild(v._title);
 
@@ -75,7 +75,7 @@ public partial class CardView : PanelContainer
 
     public void Refresh()
     {
-        _title.Text = Card.DisplayName;
+        _title.Text = Card.DisplayTitle;
         _subtitle.Text = SubtitleFor(Card);
         _aspectsLabel.Text = Card.Aspects.ToString();
     }

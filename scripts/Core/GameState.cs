@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace EnLib.Core;
@@ -89,20 +90,24 @@ public partial class GameState : Node
         _suppressSignals = true;
 
         // —— 典籍（带不同 series / condition / aspect 组合，方便测试筛选）——
+        // 银器禁令三册：一已辨识，二未辨识，三残页未辨识
         Book("银器禁令·卷一", "silver-edict", 1, 3,
              BookCondition.Worn,    (Aspect.Silver, 2), (Aspect.Night, 1), (Aspect.Decay, 1));
-        Book("银器禁令·卷二", "silver-edict", 2, 3,
+        var b2 = Book("银器禁令·卷二", "silver-edict", 2, 3,
              BookCondition.Damaged, (Aspect.Silver, 2), (Aspect.Night, 1), (Aspect.Decay, 2));
-        Book("银器禁令·卷三", "silver-edict", 3, 3,
+        b2.Identified = false;
+        var b3 = Book("银器禁令·卷三", "silver-edict", 3, 3,
              BookCondition.Fragment,(Aspect.Silver, 3), (Aspect.Night, 1), (Aspect.Decay, 3));
+        b3.Identified = false;
         Book("夜行邮政员的劳动条件", null, null, null,
              BookCondition.Good,    (Aspect.Night, 2), (Aspect.Lore, 1));
         Book("镜中的低语·案件录", "mirror-whispers", 1, 2,
              BookCondition.Worn,    (Aspect.Mortal, 1), (Aspect.Secret, 2), (Aspect.Decay, 1));
         Book("永生者税务局十年回顾", null, null, null,
              BookCondition.Damaged, (Aspect.Night, 2), (Aspect.Lore, 2), (Aspect.Decay, 1));
-        Book("远古纪事·序卷", "ancient-chronicle", 0, 7,
+        var bAnc = Book("远古纪事·序卷", "ancient-chronicle", 0, 7,
              BookCondition.Fragment,(Aspect.Ancient, 3), (Aspect.Memory, 1), (Aspect.Decay, 3));
+        bAnc.Identified = false;
         Book("关于\"为什么不见日光\"的常见误解", null, null, null,
              BookCondition.Pristine,(Aspect.Sun, 2), (Aspect.Lore, 1));
 
@@ -125,6 +130,93 @@ public partial class GameState : Node
         Lead("关于卷七", "馆长留下的纸条，让你别打开它。", (Aspect.Secret, 3), (Aspect.Memory, 2));
 
         _suppressSignals = false;
+
+        // —— 辨识配方 ——
+        _recipes.Add(new Recipe
+        {
+            Id = "identify_basic",
+            Verb = Verb.Identify,
+            Requires = new[] { new AspectRequirement(Aspect.Lore, 1) },
+            ExtraMatch = cards => cards.Any(c => c.Type == CardType.Book && !c.Identified),
+            DurationSec = 6f,
+            Outcomes = new[]
+            {
+                new Outcome
+                {
+                    Id = "identified",
+                    Weight = 100,
+                    TextPoolId = "identify.success",
+                    Effect = ctx =>
+                    {
+                        foreach (var c in ctx.InputCards)
+                            if (c.Type == CardType.Book && !c.Identified) c.Identified = true;
+                    },
+                },
+            },
+        });
+
+        // —— 整理配方 ——
+        _recipes.Add(new Recipe
+        {
+            Id = "sort_basic",
+            Verb = Verb.Sort,
+            ExtraMatch = cards =>
+            {
+                var books = cards.Where(c => c.Type == CardType.Book && c.SeriesId != null).ToList();
+                return books.GroupBy(b => b.SeriesId).Any(g => g.Count() >= 2);
+            },
+            DurationSec = 3f,
+            Outcomes = new[]
+            {
+                new Outcome
+                {
+                    Id = "sort_complete",
+                    Weight = 100,
+                    TextPoolId = "sort.result",
+                    Effect = ctx =>
+                    {
+                        var books = ctx.InputCards
+                            .Where(c => c.Type == CardType.Book && c.SeriesId != null)
+                            .ToList();
+                        var biggestGroup = books
+                            .GroupBy(b => b.SeriesId!)
+                            .OrderByDescending(g => g.Count())
+                            .First();
+
+                        var members = biggestGroup.ToList();
+                        var seriesId = biggestGroup.Key;
+                        var total = members[0].SeriesTotal ?? members.Count;
+                        var hasAllVolumes = members.Count == total
+                            && Enumerable.Range(1, total).All(i => members.Any(m => m.VolumeNo == i));
+                        var allPristine = members.All(m => m.Condition == BookCondition.Pristine);
+
+                        if (hasAllVolumes && allPristine)
+                        {
+                            // 装函仪式 → 入 L3
+                            foreach (var b in members) I.SetLocation(b, Location.Shelf);
+                            GD.Print($"[Sort] 装函成功！{seriesId} 入藏。");
+                        }
+                        else
+                        {
+                            // 缺册 → 生成寻书契机（找第一个缺的卷号）
+                            var have = members.Select(m => m.VolumeNo).ToHashSet();
+                            var missing = Enumerable.Range(1, total).FirstOrDefault(i => !have.Contains(i));
+                            if (missing > 0)
+                            {
+                                var seriesName = members.FirstOrDefault(m => m.Identified)?.DisplayName
+                                                 ?? seriesId;
+                                var baseName = seriesName.Split('·')[0];
+                                var lead = Card.New(CardType.Lead, $"寻书契机·{baseName}·卷{missing}");
+                                lead.Description = "提交访客台可加速对应卷流入。";
+                                lead.Aspects.Add(Aspect.Memory, 1);
+                                ctx.SpawnedCards.Add(lead);
+                            }
+                            GD.Print($"[Sort] {seriesId} 不完整，已生成寻书契机。");
+                        }
+                    },
+                },
+            },
+        });
 
         // —— 一个修复配方 ——
         _recipes.Add(new Recipe
@@ -195,7 +287,7 @@ public partial class GameState : Node
         c.Condition = cond;
         c.SeriesId = series;
         c.VolumeNo = volNo;
-        if (seriesTotal.HasValue) c.Description = $"全 {seriesTotal} 卷之一";
+        c.SeriesTotal = seriesTotal;
         foreach (var (a, v) in aspects) c.Aspects.Add(a, v);
         return Register(c);
     }

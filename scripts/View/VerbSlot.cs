@@ -164,6 +164,7 @@ public partial class VerbSlot : PanelContainer
         GD.Print($"[Verb {Verb}] outcome={outcome.Id}  cards={string.Join(",", cards.Select(c => c.DisplayName))}");
 
         // 消耗 charges-based 材料；活下来的卡归位 Inbox
+        // （若 Effect 已把卡移走，例如整理→Shelf，则不动它）
         foreach (var c in cards)
         {
             if (c.Type == CardType.Material && c.Charges.HasValue)
@@ -175,7 +176,8 @@ public partial class VerbSlot : PanelContainer
                     continue;
                 }
             }
-            GameState.I.SetLocation(c, Location.Inbox);
+            if (GameState.I.LocationOf(c) == Location.InSlot)
+                GameState.I.SetLocation(c, Location.Inbox);
         }
 
         // 注册新生成的卡（默认进 Inbox）
