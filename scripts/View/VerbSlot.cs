@@ -96,7 +96,9 @@ public partial class VerbSlot : PanelContainer
 
     public override bool _CanDropData(Vector2 atPosition, Variant data)
     {
-        return !_running && data.VariantType == Variant.Type.String;
+        if (_running || data.VariantType != Variant.Type.String) return false;
+        var card = GameState.I.GetCard(data.AsString());
+        return card != null && GameState.I.LocationOf(card) == Location.Inbox;
     }
 
     public override void _DropData(Vector2 atPosition, Variant data)
@@ -104,7 +106,9 @@ public partial class VerbSlot : PanelContainer
         var id = data.AsString();
         var card = GameState.I.GetCard(id);
         if (card == null) return;
-        if (_cardViews.Any(cv => cv.Card.Id == id)) return; // 不重复加入
+        if (_cardViews.Any(cv => cv.Card.Id == id)) return;
+
+        GameState.I.SetLocation(card, Location.InSlot);
 
         var view = CardView.Make(card);
         _cardViews.Add(view);
@@ -159,17 +163,25 @@ public partial class VerbSlot : PanelContainer
 
         GD.Print($"[Verb {Verb}] outcome={outcome.Id}  cards={string.Join(",", cards.Select(c => c.DisplayName))}");
 
-        // 消耗 charges-based 材料
-        foreach (var c in cards.Where(c => c.Type == CardType.Material && c.Charges.HasValue))
+        // 消耗 charges-based 材料；活下来的卡归位 Inbox
+        foreach (var c in cards)
         {
-            c.Charges--;
-            if (c.Charges <= 0) GameState.I.Remove(c);
+            if (c.Type == CardType.Material && c.Charges.HasValue)
+            {
+                c.Charges--;
+                if (c.Charges <= 0)
+                {
+                    GameState.I.Remove(c);
+                    continue;
+                }
+            }
+            GameState.I.SetLocation(c, Location.Inbox);
         }
 
-        // 注册新生成的卡
+        // 注册新生成的卡（默认进 Inbox）
         foreach (var sp in ctx.SpawnedCards) GameState.I.Register(sp);
 
-        // 把所有卡（剩余的）退出槽位
+        // 槽内的视图都释放（数据已归位 / 删除）
         foreach (var view in _cardViews) view.QueueFree();
         _cardViews.Clear();
         _activeRecipe = null;
