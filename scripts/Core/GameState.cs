@@ -90,13 +90,17 @@ public partial class GameState : Node
     {
         _suppressSignals = true;
 
-        // —— 从 YAML 加载卡牌 ——
+        // —— 命名卡（套书/工具/材料 等需要手工指定的）——
         var specs = CardLoader.LoadFile("res://data/cards.yaml");
         foreach (var spec in specs)
         {
             try { Register(CardLoader.SpecToCard(spec)); }
             catch (Exception e) { GD.PrintErr($"[Seed] 跳过 \"{spec.Name}\": {e.Message}"); }
         }
+
+        // —— 程序化生成的散卷（每题材抽 8 本 = ~48 本）——
+        foreach (var c in ProceduralBooks.SpawnFromPools("res://data/seed/night_titles.json", 8, Rng))
+            Register(c);
 
         _suppressSignals = false;
 
