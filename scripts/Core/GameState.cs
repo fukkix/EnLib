@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EnLib.Data;
 using Godot;
 
 namespace EnLib.Core;
@@ -89,45 +90,13 @@ public partial class GameState : Node
     {
         _suppressSignals = true;
 
-        // —— 典籍（带不同 series / condition / aspect 组合，方便测试筛选）——
-        // 银器禁令三册：一已辨识，二未辨识，三残页未辨识
-        Book("银器禁令·卷一", "silver-edict", 1, 3,
-             BookCondition.Worn,    (Aspect.Silver, 2), (Aspect.Night, 1), (Aspect.Decay, 1));
-        var b2 = Book("银器禁令·卷二", "silver-edict", 2, 3,
-             BookCondition.Damaged, (Aspect.Silver, 2), (Aspect.Night, 1), (Aspect.Decay, 2));
-        b2.Identified = false;
-        var b3 = Book("银器禁令·卷三", "silver-edict", 3, 3,
-             BookCondition.Fragment,(Aspect.Silver, 3), (Aspect.Night, 1), (Aspect.Decay, 3));
-        b3.Identified = false;
-        Book("夜行邮政员的劳动条件", null, null, null,
-             BookCondition.Good,    (Aspect.Night, 2), (Aspect.Lore, 1));
-        Book("镜中的低语·案件录", "mirror-whispers", 1, 2,
-             BookCondition.Worn,    (Aspect.Mortal, 1), (Aspect.Secret, 2), (Aspect.Decay, 1));
-        Book("永生者税务局十年回顾", null, null, null,
-             BookCondition.Damaged, (Aspect.Night, 2), (Aspect.Lore, 2), (Aspect.Decay, 1));
-        var bAnc = Book("远古纪事·序卷", "ancient-chronicle", 0, 7,
-             BookCondition.Fragment,(Aspect.Ancient, 3), (Aspect.Memory, 1), (Aspect.Decay, 3));
-        bAnc.Identified = false;
-        Book("关于\"为什么不见日光\"的常见误解", null, null, null,
-             BookCondition.Pristine,(Aspect.Sun, 2), (Aspect.Lore, 1));
-
-        // —— 知识 ——
-        Knowledge("装帧史·初级", 1, (Aspect.Craft, 1), (Aspect.Lore, 1));
-        Knowledge("银器化学", 1,   (Aspect.Silver, 1), (Aspect.Lore, 1));
-        Knowledge("古拉丁文",  1,   (Aspect.Ancient, 1), (Aspect.Lore, 2));
-
-        // —— 工具（耐用品）——
-        Tool("牛骨折页刀", (Aspect.Craft, 2));
-        Tool("铜版烫金机", (Aspect.Craft, 2), (Aspect.Memory, 1));
-
-        // —— 材料（消耗品）——
-        Material("鞣酸纸", 3, (Aspect.Craft, 1), (Aspect.Silver, 1));
-        Material("桑皮纸", 5, (Aspect.Craft, 1));
-        Material("阿拉伯树胶", 2, (Aspect.Craft, 1), (Aspect.Ancient, 1));
-
-        // —— 访客 / 契机 ——
-        Visitor("信使乌鸦", "缓解血饥；偶尔带来契机。", (Aspect.Blood, 1));
-        Lead("关于卷七", "馆长留下的纸条，让你别打开它。", (Aspect.Secret, 3), (Aspect.Memory, 2));
+        // —— 从 YAML 加载卡牌 ——
+        var specs = CardLoader.LoadFile("res://data/cards.yaml");
+        foreach (var spec in specs)
+        {
+            try { Register(CardLoader.SpecToCard(spec)); }
+            catch (Exception e) { GD.PrintErr($"[Seed] 跳过 \"{spec.Name}\": {e.Message}"); }
+        }
 
         _suppressSignals = false;
 
@@ -279,55 +248,4 @@ public partial class GameState : Node
         });
     }
 
-    // —— Seeding helpers ——
-    private Card Book(string title, string? series, int? volNo, int? seriesTotal,
-                      BookCondition cond, params (Aspect a, int v)[] aspects)
-    {
-        var c = Card.New(CardType.Book, title);
-        c.Condition = cond;
-        c.SeriesId = series;
-        c.VolumeNo = volNo;
-        c.SeriesTotal = seriesTotal;
-        foreach (var (a, v) in aspects) c.Aspects.Add(a, v);
-        return Register(c);
-    }
-
-    private Card Knowledge(string title, int level, params (Aspect a, int v)[] aspects)
-    {
-        var c = Card.New(CardType.Knowledge, $"{title}·{level} 级");
-        foreach (var (a, v) in aspects) c.Aspects.Add(a, v);
-        return Register(c);
-    }
-
-    private Card Tool(string title, params (Aspect a, int v)[] aspects)
-    {
-        var c = Card.New(CardType.Tool, title);
-        c.Charges = null;  // 耐用
-        foreach (var (a, v) in aspects) c.Aspects.Add(a, v);
-        return Register(c);
-    }
-
-    private Card Material(string title, int charges, params (Aspect a, int v)[] aspects)
-    {
-        var c = Card.New(CardType.Material, title);
-        c.Charges = charges;
-        foreach (var (a, v) in aspects) c.Aspects.Add(a, v);
-        return Register(c);
-    }
-
-    private Card Visitor(string title, string desc, params (Aspect a, int v)[] aspects)
-    {
-        var c = Card.New(CardType.Visitor, title);
-        c.Description = desc;
-        foreach (var (a, v) in aspects) c.Aspects.Add(a, v);
-        return Register(c);
-    }
-
-    private Card Lead(string title, string desc, params (Aspect a, int v)[] aspects)
-    {
-        var c = Card.New(CardType.Lead, title);
-        c.Description = desc;
-        foreach (var (a, v) in aspects) c.Aspects.Add(a, v);
-        return Register(c);
-    }
 }

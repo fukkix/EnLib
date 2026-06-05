@@ -6,4 +6,7 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>EnLib</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" Version="16.2.1" />
+  </ItemGroup>
 </Project>

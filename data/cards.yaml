@@ -1,0 +1,119 @@
+# ────────────────────────────────────────────────────────────
+# 初始馆藏卡牌定义
+# 字段：
+#   name (必填) · type (book/knowledge/tool/material/state/visitor/lead)
+#   aspects: { aspect: 强度, ... }   # 详见 scripts/Core/Aspect.cs
+#   condition: fragment/damaged/worn/good/pristine  (book only, 默认 good)
+#   identified: true/false   (book only, 默认 true)
+#   series / volume / series_total   (book only)
+#   charges: 整数   (material only, 不写表示耐用品/tool)
+#   description: 自由文本
+# ────────────────────────────────────────────────────────────
+
+# ──── 典籍 ────
+- name: 银器禁令·卷一
+  type: book
+  condition: worn
+  series: silver-edict
+  volume: 1
+  series_total: 3
+  aspects: { silver: 2, night: 1, decay: 1 }
+
+- name: 银器禁令·卷二
+  type: book
+  condition: damaged
+  identified: false
+  series: silver-edict
+  volume: 2
+  series_total: 3
+  aspects: { silver: 2, night: 1, decay: 2 }
+
+- name: 银器禁令·卷三
+  type: book
+  condition: fragment
+  identified: false
+  series: silver-edict
+  volume: 3
+  series_total: 3
+  aspects: { silver: 3, night: 1, decay: 3 }
+
+- name: 夜行邮政员的劳动条件
+  type: book
+  condition: good
+  aspects: { night: 2, lore: 1 }
+
+- name: 镜中的低语·案件录
+  type: book
+  condition: worn
+  series: mirror-whispers
+  volume: 1
+  series_total: 2
+  aspects: { mortal: 1, secret: 2, decay: 1 }
+
+- name: 永生者税务局十年回顾
+  type: book
+  condition: damaged
+  aspects: { night: 2, lore: 2, decay: 1 }
+
+- name: 远古纪事·序卷
+  type: book
+  condition: fragment
+  identified: false
+  series: ancient-chronicle
+  volume: 1
+  series_total: 7
+  aspects: { ancient: 3, memory: 1, decay: 3 }
+
+- name: 关于"为什么不见日光"的常见误解
+  type: book
+  condition: pristine
+  aspects: { sun: 2, lore: 1 }
+
+# ──── 知识 ────
+- name: 装帧史·初级·1 级
+  type: knowledge
+  aspects: { craft: 1, lore: 1 }
+
+- name: 银器化学·1 级
+  type: knowledge
+  aspects: { silver: 1, lore: 1 }
+
+- name: 古拉丁文·1 级
+  type: knowledge
+  aspects: { ancient: 1, lore: 2 }
+
+# ──── 工具（耐用品）────
+- name: 牛骨折页刀
+  type: tool
+  aspects: { craft: 2 }
+
+- name: 铜版烫金机
+  type: tool
+  aspects: { craft: 2, memory: 1 }
+
+# ──── 材料（消耗品）────
+- name: 鞣酸纸
+  type: material
+  charges: 3
+  aspects: { craft: 1, silver: 1 }
+
+- name: 桑皮纸
+  type: material
+  charges: 5
+  aspects: { craft: 1 }
+
+- name: 阿拉伯树胶
+  type: material
+  charges: 2
+  aspects: { craft: 1, ancient: 1 }
+
+# ──── 访客 / 契机 ────
+- name: 信使乌鸦
+  type: visitor
+  description: 缓解血饥；偶尔带来契机。
+  aspects: { blood: 1 }
+
+- name: 关于卷七
+  type: lead
+  description: 馆长留下的纸条，让你别打开它。
+  aspects: { secret: 3, memory: 2 }
